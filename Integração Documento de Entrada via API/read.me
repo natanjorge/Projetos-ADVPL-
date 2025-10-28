@@ -1,0 +1,78 @@
+# Integração Genial x Protheus (Notas de Entrada)
+
+Integração REST entre o **ERP TOTVS Protheus** e o sistema **Genial**, responsável pela **importação automatizada de Notas Fiscais de Entrada (NFe)**.  
+O processo realiza a leitura de XMLs, gera **Pedidos de Compras (SC7)** e **Pré-Notas (SF1/SD1)** de forma automática, registrando logs e enviando notificações por e-mail.
+
+---
+
+## Visão Geral
+
+O projeto foi desenvolvido em **ADVPL** e disponibiliza um **webservice REST** para recepção de notas, orquestração da integração, registro de logs e envio de notificações.  
+Ele é composto por cinco principais rotinas (`.PRW`), cada uma com uma função específica dentro do fluxo.
+
+---
+
+## Estrutura do Projeto
+
+| Arquivo | Descrição |
+|----------|------------|
+| **WSImportacaoGenial.prw** | Define o webservice REST `zWSNotasGenial`. Recebe o XML da nota via método `POST`, valida o header `Authorization` e encaminha para o orquestrador (`REAINT04`). |
+| **REAINT04.prw** | Atua como **orquestrador** da integração. Valida credenciais, converte XML em objeto, direciona o processamento para o módulo correto (ex.: `REAINT01`) e grava o log de execução (tabela ZZA). |
+| **REAINT01.prw** | Responsável pela **importação da NFe de entrada**. Cria o **Pedido de Compras (SC7)** e a **Pré-Nota (SF1/SD1)** vinculada, utilizando `MSExecAuto` das rotinas **MATA121** e **MATA140**. |
+| **REAINT05.prw** | Implementa uma **tela de consulta MVC** da tabela de log (**ZZA**), permitindo acompanhamento das integrações e diagnóstico de erros diretamente pelo Protheus. |
+| **REAINT06.prw** | Envia **notificações por e-mail** com base nos registros de log (sucesso/erro). Pode ser executada manualmente ou via **Schedule**. |
+
+---
+
+## Fluxo de Processamento
+
+1. **Genial** envia uma requisição `POST /zWSNotasGenial/notas` com:
+   - XML da NFe no corpo da requisição;
+   - Header `Authorization: Basic <token>`.
+
+2. O **webservice (`WSImportacaoGenial`)** encaminha os dados ao **orquestrador (`REAINT04`)**.
+
+3. O **REAINT04** valida credenciais, interpreta o XML e chama o **REAINT01** para gerar:
+   - Pedido de Compra (**SC7**);
+   - Pré-Nota Fiscal (**SF1/SD1**).
+
+4. O resultado é registrado na **tabela ZZA** (status, mensagem, OC gerada, etc.).
+
+5. O **REAINT06** envia **e-mails automáticos** com o resumo da integração.
+
+6. A rotina **REAINT05** permite **visualizar logs** e resultados dentro do Protheus.
+
+---
+
+## Tabelas e Rotinas Utilizadas
+
+| Tipo | Descrição |
+|------|------------|
+| **SC7** | Pedido de Compra (gerado automaticamente). |
+| **SF1 / SD1** | Cabeçalho e itens da Pré-Nota. |
+| **ZZA** | Log da integração. |
+| **MATA121** | Execução automática da rotina de Pedido de Compra. |
+| **MATA140** | Execução automática da rotina de Pré-Nota. |
+
+---
+
+## Parâmetros Necessários
+
+| Parâmetro | Descrição |
+|------------|------------|
+| `Authorization` | Token Basic Auth (header). |
+| `MV_RELSERV` | Servidor SMTP para envio de e-mails. |
+| `MV_RELACNT` | Conta remetente para envio de e-mails. |
+| `Schedule` | (opcional) Agendamento da rotina `U_REAINT06()` para notificação automática. |
+
+---
+
+## Exemplo de Requisição
+
+```bash
+curl -X POST "http://<server>:<port>/rest/zWSNotasGenial/notas" \
+  -H "Authorization: Basic <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "xml": "<NFe>...</NFe>"
+      }'
