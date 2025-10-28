@@ -41,38 +41,3 @@ Ele é composto por cinco principais rotinas (`.PRW`), cada uma com uma função
 5. O **REAINT06** envia **e-mails automáticos** com o resumo da integração.
 
 6. A rotina **REAINT05** permite **visualizar logs** e resultados dentro do Protheus.
-
----
-
-## Tabelas e Rotinas Utilizadas
-
-| Tipo | Descrição |
-|------|------------|
-| **SC7** | Pedido de Compra (gerado automaticamente). |
-| **SF1 / SD1** | Cabeçalho e itens da Pré-Nota. |
-| **ZZA** | Log da integração. |
-| **MATA121** | Execução automática da rotina de Pedido de Compra. |
-| **MATA140** | Execução automática da rotina de Pré-Nota. |
-
----
-
-## Parâmetros Necessários
-
-| Parâmetro | Descrição |
-|------------|------------|
-| `Authorization` | Token Basic Auth (header). |
-| `MV_RELSERV` | Servidor SMTP para envio de e-mails. |
-| `MV_RELACNT` | Conta remetente para envio de e-mails. |
-| `Schedule` | (opcional) Agendamento da rotina `U_REAINT06()` para notificação automática. |
-
----
-
-## Exemplo de Requisição
-
-```bash
-curl -X POST "http://<server>:<port>/rest/zWSNotasGenial/notas" \
-  -H "Authorization: Basic <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "xml": "<NFe>...</NFe>"
-      }'
